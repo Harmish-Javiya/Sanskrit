@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug hydrogen",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/cmake-build-debug/hydrogen",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake Build"
+    }
+  ]
+}

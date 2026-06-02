@@ -1,0 +1,9 @@
+karma jodan(a purnank, b purnank) purnank {
+    nivarta a + b;
+}
+
+mukhya() {
+    x purnank = jodan(5, 10);
+    x mudraya;
+    nivarta 0;
+}
