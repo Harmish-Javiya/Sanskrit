@@ -1,6 +1,6 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -I includes
-SRC = main.cpp lexer.cpp parser.cpp
+SRC = main.cpp lexer.cpp parser.cpp sementic.cpp
 TARGET = compiler
 
 build:

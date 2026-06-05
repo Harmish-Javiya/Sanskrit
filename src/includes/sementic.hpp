@@ -20,7 +20,7 @@ enum class SansType{
     UNKNOWN
 };
 
-class SymbolInfo {
+struct SymbolInfo {
     string name;
     SansType type;
     bool isConst;
@@ -31,7 +31,7 @@ class SymbolInfo {
 
 class SymbolTable{
     private:
-        stack<unordered_map<string, SymbolInfo>> scopes;
+        vector<unordered_map<string, SymbolInfo>> scopes;
 
     public:
         void enterScope();
@@ -54,6 +54,7 @@ class SemanticAnalyzer{
 
         void visitProgram(ProgramNode* node);
         void visitBlock(BlockNode* node);
+        void visitVarDecl(VarDeclNode* node);
         void visitVarBlock(VarDeclNode* node);
         void visitAssign(AssignNode* node);
         void visitPrint(PrintNode* node);
