@@ -76,7 +76,6 @@ bool SemanticAnalyzer::typesCompatible(SansType a, SansType b) {
 
 void SemanticAnalyzer::reportError(string message) {
     errors.push_back(message);
-    cerr<< " [Semantic Error] " << message << endl;
 }
 
 void SemanticAnalyzer::analyze(ProgramNode* node) {
@@ -120,10 +119,44 @@ void SemanticAnalyzer::visitBlock(BlockNode* node){
     SymbolTable.exitScope();
 }
 
-SansType SemanticAnalyzer::visitExpr(ASTNode* node) { return SansType::UNKNOWN; }
+SansType SemanticAnalyzer::visitExpr(ASTNode* node) { 
+    if (!node) return SansType::VOID;
+
+    if (auto* n = dynamic_cast<LiteralNode*>(node)) return visitLiteral(n);
+    if (auto* n = dynamic_cast<IdentifierNode*>(node)) return visitIdentifier(n);
+    if (auto* n = dynamic_cast<BinaryOpNode*>(node)) return visitBinaryOp(n);
+    if (auto* n = dynamic_cast<UnaryOpNode*>(node)) return visitUnaryOp(n);
+    if (auto* n = dynamic_cast<FuncCallNode*>(node)) { visitFuncCall(n); return SansType::UNKNOWN; }
+    if (auto* n = dynamic_cast<ArrayLiteralNode*>(node)) return visitArrayLiteral(n);
+    if (auto* n = dynamic_cast<ArrayAccessNode*>(node)) return visitArrayAccess(n);
+
+    return SansType::UNKNOWN;
+}
 
 //-- STATEMENT VISITORS --
-void SemanticAnalyzer::visitVarDecl(VarDeclNode* node){}
+void SemanticAnalyzer::visitVarDecl(VarDeclNode* node){
+    SansType declaredType = typeFromString(node->type);
+
+    if(node->initializer) {
+        SansType initType = visitExpr(node->initializer);
+        if(!typesCompatible(declaredType, initType)){
+            reportError("Type mismatch in declaration of ' " + node->varName + "' : expected " + typeToString(declaredType) + " but got " + typeToString(initType));
+        }
+    }
+
+    if (SymbolTable.existsInCurrentScope(node->varName)) {
+        reportError("Variable already declared: " + node->varName);
+        return;
+    }
+
+    SymbolInfo info;
+    info.name = node->varName;
+    info.type = declaredType;
+    info.isConst = node->isConst;
+    info.isFunction = false;
+    SymbolTable.declare(info);
+}
+
 void SemanticAnalyzer::visitAssign(AssignNode* node){}
 void SemanticAnalyzer::visitPrint(PrintNode* node){}
 void SemanticAnalyzer::visitInput(InputNode* node){}
@@ -139,11 +172,97 @@ void SemanticAnalyzer::visitFuncDecl(FuncDeclNode* node) {}
 void SemanticAnalyzer::visitFuncCall(FuncCallNode* node) {}
 
 //-- Expression Visitors --
-SansType SemanticAnalyzer::visitBinaryOp(BinaryOpNode* node) { return SansType::UNKNOWN; }
-SansType SemanticAnalyzer::visitUnaryOp(UnaryOpNode* node) { return SansType::UNKNOWN; }
-SansType SemanticAnalyzer::visitLiteral(LiteralNode* node) { return SansType::UNKNOWN; }
-SansType SemanticAnalyzer::visitIdentifier(IdentifierNode* node) { return SansType::UNKNOWN; }
+SansType SemanticAnalyzer::visitBinaryOp(BinaryOpNode* node) { 
+    SansType left = visitExpr(node->left);
+    SansType right = visitExpr(node->right);
+
+    if (node->op == TokenType::adhik || 
+        node->op == TokenType::nyun || 
+        node->op == TokenType::sam || 
+        node->op == TokenType::asam || 
+        node->op == TokenType::adhik_sam || 
+        node->op == TokenType::nyun_sam || 
+        node->op == TokenType::sym_adhik || 
+        node->op == TokenType::sym_nyun || 
+        node->op == TokenType::sym_sam || 
+        node->op == TokenType::sym_asam || 
+        node->op == TokenType::sym_adhik_sam || 
+        node->op == TokenType::sym_nyun_sam ) {
+        if (!typesCompatible(left,right))    
+            reportError("Type mismatch in comparison");
+        return SansType::BOOL;
+    }
+    
+    if (node->op == TokenType::tatha ||
+        node->op == TokenType::va) {
+        
+            if(left != SansType::BOOL)
+                reportError("Left side of logical operator must be tark");
+            if(right != SansType::BOOL)
+                reportError("Left side of logical operator must be tark");
+            return SansType::BOOL;
+    }
+
+    if(!typesCompatible(left, right)) {
+        reportError("Type mismatch in arithmetic operation: " + typeToString(left) + " and " + typeToString(right));
+        return SansType::UNKNOWN;
+    }
+
+    if (left == SansType::FLOAT || right == SansType::FLOAT)
+        return SansType::FLOAT;
+    
+    return SansType::UNKNOWN;
+}
+
+SansType SemanticAnalyzer::visitUnaryOp(UnaryOpNode* node) {
+    SansType operandType = visitExpr(node->operand);
+
+    if (node->op == TokenType::na) {
+        if (operandType != SansType::BOOL)
+            reportError(" '!' operator requires tark(bool) operand");
+        return operandType;
+    }
+
+    if(node->op == TokenType::viyoga) {
+        if (operandType != SansType::INT && operandType != SansType::FLOAT)
+            reportError(" '-' operator requires numeric operand");
+        return operandType;    
+    }
+
+    if(node->op == TokenType::vriddhi || node->op == TokenType::kshaya) {
+        if (operandType != SansType::INT)
+            reportError(" '++/--' operator requires purnank (int) operand");
+        return SansType::INT;
+    }
+
+    return operandType;
+}
+
+SansType SemanticAnalyzer::visitLiteral(LiteralNode* node) { 
+    
+    switch (node->type)
+    {
+        case TokenType::purnank_lit: return SansType::INT;
+        case TokenType::dashamlav_lit: return SansType::FLOAT;
+        case TokenType::aksarmala_lit: return SansType::STRING;
+        case TokenType::aksar_lit: return SansType::CHAR;
+        case TokenType::satya:
+        case TokenType::asatya: return SansType::BOOL;
+        default: return SansType::UNKNOWN;
+    } 
+}
+
+SansType SemanticAnalyzer::visitIdentifier(IdentifierNode* node) { 
+    SymbolInfo* info = SymbolTable.lookup(node->name);
+    if(!info){
+        reportError("Undeclared variable: " + node->name);
+        return SansType::UNKNOWN;
+    }
+    return info->type;
+}
+
 SansType SemanticAnalyzer::visitArrayLiteral(ArrayLiteralNode* node) { return SansType::UNKNOWN; }
+
 SansType SemanticAnalyzer::visitArrayAccess(ArrayAccessNode* node) { return SansType::UNKNOWN; }
 
 

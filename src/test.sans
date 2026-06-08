@@ -3,7 +3,6 @@ karma jodan(a purnank, b purnank) purnank {
 }
 
 mukhya() {
-    x purnank = jodan(5, 10);
-    x mudraya;
-    nivarta 0;
+    x purnank = 10;  
+    z aksarmala = x + 5
 }
