@@ -2,7 +2,15 @@ karma jodan(a purnank, b purnank) purnank {
     nivarta a + b;
 }
 
+karma greet() sunya {
+    "namaste" mudraya;
+    nivarta;
+}
+
 mukhya() {
-    x purnank = 10;  
-    z aksarmala = x + 5
+    arr sarani purnank = [1, 2, 3];
+    arr[0] mudraya;
+    arr[1] = 10;
+   
+    nivarta;
 }

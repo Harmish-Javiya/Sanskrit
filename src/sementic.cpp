@@ -85,7 +85,12 @@ void SemanticAnalyzer::analyze(ProgramNode* node) {
 void SemanticAnalyzer::visitProgram(ProgramNode* node){
     SymbolTable.enterScope();
     for(auto* decl : node->declarations) {
-        visitStatement(decl);
+
+        if(auto* f = dynamic_cast<FuncDeclNode*>(decl)){
+            visitFuncDecl(f);
+        }else{
+            visitStatement(decl);
+        }
     }
     SymbolTable.exitScope();
 }
@@ -93,7 +98,7 @@ void SemanticAnalyzer::visitProgram(ProgramNode* node){
 //-- Dispatchers -- 
 
 void SemanticAnalyzer::visitStatement(ASTNode* node) {
-    if (!node) return;
+    if (!node) {return;}
 
     if (auto* n = dynamic_cast<VarDeclNode*>(node)) visitVarDecl(n);
     else if (auto* n = dynamic_cast<AssignNode*>(node)) visitAssign(n);
@@ -109,6 +114,7 @@ void SemanticAnalyzer::visitStatement(ASTNode* node) {
     else if (auto* n = dynamic_cast<ExitNode*>(node)) visitExit(n);
     else if (auto* n = dynamic_cast<FuncDeclNode*>(node)) visitFuncDecl(n);
     else if (auto* n = dynamic_cast<FuncCallNode*>(node)) visitFuncCall(n);
+    else if (auto* n = dynamic_cast<SwitchNode*>(node))    visitSwitch(n);
 }
 
 void SemanticAnalyzer::visitBlock(BlockNode* node){
@@ -126,7 +132,15 @@ SansType SemanticAnalyzer::visitExpr(ASTNode* node) {
     if (auto* n = dynamic_cast<IdentifierNode*>(node)) return visitIdentifier(n);
     if (auto* n = dynamic_cast<BinaryOpNode*>(node)) return visitBinaryOp(n);
     if (auto* n = dynamic_cast<UnaryOpNode*>(node)) return visitUnaryOp(n);
-    if (auto* n = dynamic_cast<FuncCallNode*>(node)) { visitFuncCall(n); return SansType::UNKNOWN; }
+    if (auto* n = dynamic_cast<FuncCallNode*>(node)) { 
+        visitFuncCall(n); 
+        SymbolInfo* info = SymbolTable.lookup(n->funcName);
+
+        if(info) {
+            return info->returnType;
+        }
+        return SansType::UNKNOWN; 
+    }
     if (auto* n = dynamic_cast<ArrayLiteralNode*>(node)) return visitArrayLiteral(n);
     if (auto* n = dynamic_cast<ArrayAccessNode*>(node)) return visitArrayAccess(n);
 
@@ -157,19 +171,209 @@ void SemanticAnalyzer::visitVarDecl(VarDeclNode* node){
     SymbolTable.declare(info);
 }
 
-void SemanticAnalyzer::visitAssign(AssignNode* node){}
-void SemanticAnalyzer::visitPrint(PrintNode* node){}
-void SemanticAnalyzer::visitInput(InputNode* node){}
-void SemanticAnalyzer::visitIf(IfNode* node){}
-void SemanticAnalyzer::visitWhile(WhileNode* node){}
-void SemanticAnalyzer::visitFor(ForNode* node){}
-void SemanticAnalyzer::visitSwitch(SwitchNode* node){}
-void SemanticAnalyzer::visitReturn(ReturnNode* node){}
-void SemanticAnalyzer::visitBreak(BreakNode* node) {}
-void SemanticAnalyzer::visitContinue(ContinueNode* node){}
-void SemanticAnalyzer::visitExit(ExitNode* node) {}
-void SemanticAnalyzer::visitFuncDecl(FuncDeclNode* node) {}
-void SemanticAnalyzer::visitFuncCall(FuncCallNode* node) {}
+void SemanticAnalyzer::visitAssign(AssignNode* node){
+    
+    SymbolInfo* info = SymbolTable.lookup(node->name);
+
+    if(!info){
+        reportError("Undeclared variable: " + node->name);
+        return;
+    }
+
+    if(info->isConst){
+        reportError("Cannot assign to const variable: " + node->name);
+        return;
+    }
+
+    SansType valueType = visitExpr(node->value);
+    if(!typesCompatible(info->type, valueType)){
+        reportError("Type mismatch in assignment to '" + node->name +"': expected" + typeToString(info->type) + " but got " + typeToString(valueType));
+    }
+}
+
+void SemanticAnalyzer::visitPrint(PrintNode* node){
+    visitExpr(node->value);
+}
+
+void SemanticAnalyzer::visitInput(InputNode* node){
+    SymbolInfo* info = SymbolTable.lookup(node->name);
+    if (!info) {
+        reportError("Undeclared variable: " + node->name);
+        return;
+    }
+
+
+    if (info->isConst) {
+        reportError("Cannot take input into const variable: " + node->name);
+        return;
+    }
+}
+
+void SemanticAnalyzer::visitIf(IfNode* node){
+    SansType condType = visitExpr(node->condition);
+
+    if(condType != SansType::BOOL && condType != SansType::UNKNOWN){
+        reportError("yadi condition must be tark (bool)");
+    }
+
+    visitBlock(node->thenBlock);
+    if(node->elseBlock){
+        visitBlock(node->thenBlock);
+    }
+}
+
+void SemanticAnalyzer::visitWhile(WhileNode* node){
+
+    SansType condType = visitExpr(node->condition);
+
+    if (condType != SansType::BOOL && condType != SansType::UNKNOWN){
+        reportError("yadi condition must be tark (bool)");
+    }
+
+    visitBlock(node->body);
+}
+
+void SemanticAnalyzer::visitFor(ForNode* node){
+    SymbolTable.enterScope();
+
+    if(node->isRange){
+        SansType fromType = visitExpr(node->from);
+        SansType toType = visitExpr(node->to);
+
+        if(fromType != SansType::INT)
+            reportError("For loop range start must be purnank");
+        if(toType != SansType::INT)
+            reportError("For loop range start must be purnank");
+        
+        SymbolInfo info;
+        info.name = node->var;
+        info.type = SansType::INT;
+        info.isConst = false;
+        info.isFunction = false;
+
+        SymbolTable.declare(info);
+    } else {
+
+        if (node->from) visitStatement(node->from);
+        if (node->to) visitExpr(node->to);
+        if (node->update) visitExpr(node->update);
+    }
+
+    visitBlock(node->body);
+    SymbolTable.exitScope();
+}
+
+void SemanticAnalyzer::visitSwitch(SwitchNode* node){
+    SansType exprType = visitExpr(node->expression);
+
+    for(auto* caseNode: node->cases){
+        if(caseNode->value != nullptr){
+
+            SansType caseType = visitExpr(caseNode->value);
+            if (!typesCompatible(exprType, caseType)){
+                reportError("Case Type are diffrent in vikalp: expected : " + typeToString(exprType) + " but got " + typeToString(caseType));
+            }    
+        }
+        
+        visitBlock(caseNode->body);
+    }
+
+}
+
+void SemanticAnalyzer::visitReturn(ReturnNode* node){
+    SansType expectedType = typeFromString(currentFunctionReturn);
+
+    if(node->value == nullptr){
+        if(expectedType != SansType::VOID){
+            reportError("Expected return value of type: " + currentFunctionReturn );
+        }
+        return;
+    }
+
+    SansType returnType = visitExpr(node->value);
+
+    if(!typesCompatible(expectedType, returnType)) {
+        reportError("Return Type mismatch: expected " + typeToString(expectedType) + " but got " + typeToString(returnType));
+    }
+}
+
+void SemanticAnalyzer::visitBreak(BreakNode* node) {
+    // nothing to check — just valid inside loops/switch
+    // loop validation can be added later
+}
+
+void SemanticAnalyzer::visitContinue(ContinueNode* node){
+    // nothing to check — just valid inside loops
+}
+
+
+void SemanticAnalyzer::visitExit(ExitNode* node) {
+    if (node->code != nullptr){
+        SansType codeType = visitExpr(node->code);
+        if(codeType != SansType::INT){
+            reportError(" nirgachh exit code must be purnank (int) ");
+        }
+    }
+}
+
+void SemanticAnalyzer::visitFuncDecl(FuncDeclNode* node) {
+    SymbolInfo funcInfo;
+    funcInfo.name = node->name;
+    funcInfo.type = typeFromString(node->returnType);
+    funcInfo.isFunction = true;
+    funcInfo.returnType = typeFromString(node->returnType);
+
+    for (auto* param: node->params){
+        funcInfo.paramTypes.push_back(typeFromString(param->type));
+    }
+    SymbolTable.declare(funcInfo);
+
+    SymbolTable.enterScope();
+    for(auto* param: node->params){
+        SymbolInfo info;
+        info.name = param->name;
+        info.type = typeFromString(param->type);
+        info.isConst = false;
+        info.isFunction = false;
+        SymbolTable.declare(info);
+    }
+
+    string previousReturn = currentFunctionReturn;
+    currentFunctionReturn = node->returnType;
+
+    for(auto* stmt : node->body->statements)
+        visitStatement(stmt);
+
+    currentFunctionReturn = previousReturn; 
+    SymbolTable.exitScope();
+}
+
+void SemanticAnalyzer::visitFuncCall(FuncCallNode* node) {
+    SymbolInfo* info = SymbolTable.lookup(node->funcName);
+    
+    if (!info){
+        reportError("Undeclared function: " + node->funcName);
+        return;
+    }
+
+    if (!info->isFunction) {
+        reportError(node->funcName + " is not a function ");
+        return;
+    }
+
+    if (node->args.size() != info->paramTypes.size()) {
+        reportError("Function '" + node->funcName + "' expects " + to_string(info->paramTypes.size()) + " arguments but got " + to_string(node->args.size()));
+        return;
+    }
+
+    for (int i = 0; i < node->args.size() ; i++){
+        SansType argType = visitExpr(node->args[i]);
+
+        if(!typesCompatible(argType, info->paramTypes[i])){
+            reportError("Argumets " + to_string(i+1) + " of '" + node->funcName + "': expected " + typeToString(info->paramTypes[i]) + " but got " + typeToString(argType));
+        }
+    }
+}
 
 //-- Expression Visitors --
 SansType SemanticAnalyzer::visitBinaryOp(BinaryOpNode* node) { 
@@ -206,11 +410,15 @@ SansType SemanticAnalyzer::visitBinaryOp(BinaryOpNode* node) {
     if(!typesCompatible(left, right)) {
         reportError("Type mismatch in arithmetic operation: " + typeToString(left) + " and " + typeToString(right));
         return SansType::UNKNOWN;
+    } else {
+        return left;
     }
 
     if (left == SansType::FLOAT || right == SansType::FLOAT)
         return SansType::FLOAT;
-    
+
+    return left;
+
     return SansType::UNKNOWN;
 }
 
@@ -261,9 +469,47 @@ SansType SemanticAnalyzer::visitIdentifier(IdentifierNode* node) {
     return info->type;
 }
 
-SansType SemanticAnalyzer::visitArrayLiteral(ArrayLiteralNode* node) { return SansType::UNKNOWN; }
+SansType SemanticAnalyzer::visitArrayLiteral(ArrayLiteralNode* node) { 
+    if(node->elements.empty())
+        return SansType::ARRAY;
 
-SansType SemanticAnalyzer::visitArrayAccess(ArrayAccessNode* node) { return SansType::UNKNOWN; }
+    SansType firstType = visitExpr(node->elements[0]);
+
+    for (int i = 0; i < node->elements.size(); i++){
+        SansType elemType = visitExpr(node->elements[i]);
+        if (!typesCompatible(firstType, elemType)){
+            reportError("Array elements must be same type: element " +
+                to_string(i) + " expected " + typeToString(firstType) +
+                " but got " + typeToString(elemType));
+        }
+    }
+
+    return SansType::ARRAY; 
+}
+
+SansType SemanticAnalyzer::visitArrayAccess(ArrayAccessNode* node) { 
+    SymbolInfo* info = SymbolTable.lookup(node->name);
+    if(!info){
+        reportError("Undeclared array: " + node->name);
+        return SansType::UNKNOWN;
+    }
+
+    if (info->type != SansType::ARRAY){
+        reportError(node->name + " is not an array");
+        return SansType::UNKNOWN;
+    }
+
+    SansType indexType = visitExpr(node->index);
+    if (indexType != SansType::INT) {
+        reportError("Array index must be purnank (int)");
+    }
+
+    if (node->value != nullptr) {
+        visitExpr(node->value);
+    }
+
+    return SansType::INT; // element type — improve later with sarani_purnank
+}
 
 
 bool SemanticAnalyzer::hasErrors() { return !errors.empty(); }
