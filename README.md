@@ -317,8 +317,6 @@ return value → rax
 
 ---
 
-## Author
-
-Harmish — B.Tech CSIT (Cyber Security), Symbiosis Skills and Professional University, Pune.
-
 Built as a systems programming learning project combining compiler design, assembly programming, and Sanskrit language inspiration.
+
+have fun
