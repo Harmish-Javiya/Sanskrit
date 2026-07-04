@@ -103,8 +103,6 @@ ASTNode* Parser::parseStatement() {
     
     if(check(TokenType::nirgacch)) return parseExitStmt();
 
-    if(check(TokenType::nava)) return parseNewExpr();
-
     if(check(TokenType::mukta)) return parseFreeStmt();
 
     if(check(TokenType::identifier)){
@@ -221,6 +219,14 @@ ASTNode* Parser::parsePrimaryExpr(){
 
         IdentifierNode* node = new IdentifierNode();
         node->name = t.value.value();
+        return node;
+    }
+
+    if (check(TokenType::nava)) {
+        consume();                                    
+        string type = tokenTypeToString(consume().type); 
+        NewNode* node = new NewNode();
+        node->type = type;
         return node;
     }
 

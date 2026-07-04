@@ -2,15 +2,42 @@ karma jodan(a purnank, b purnank) purnank {
     nivarta a + b;
 }
 
-karma greet() sunya {
-    "namaste" mudraya;
-    nivarta;
-}
-
 mukhya() {
+    // var decl
+    x purnank = 10;
+    naam aksarmala = "Arjun";
     arr sarani purnank = [1, 2, 3];
+
+    // assignment
+    x = 20;
+
+    // print
+    x mudraya;
+
+    // if
+    yadi x adhik 5 {
+        "bada hai" mudraya;
+    } anyatha {
+        "chota hai" mudraya;
+    }
+
+    // while
+    yavat x adhik 0 {
+        x -= 1;
+    }
+
+    // for
+    krute i : 0 se 5 {
+        i mudraya;
+    }
+
+    // func call
+    result purnank = jodan(5, 10);
+    result mudraya;
+
+    // array
     arr[0] mudraya;
-    arr[1] = 10;
-   
+    arr[1] = 99;
+
     nivarta;
 }

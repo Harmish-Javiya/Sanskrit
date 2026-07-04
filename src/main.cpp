@@ -1,6 +1,7 @@
 #include "includes/lexer.hpp"
 #include "includes/parser.hpp"
 #include "includes/sementic.hpp"
+#include "includes/codegen.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -183,6 +184,19 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
     
+    CodeGenerator codegen;
+    
+    // CodeGenerator gen;
+    // LiteralNode lit;
+    // lit.type = TokenType::purnank_lit;
+    // lit.value = "42";
+    // gen.genLiteral(&lit);
+    // cout << gen.getOutput() << endl;
+
+    codegen.generate(ast);
+    codegen.writeToFile("output.asm");
+    cout << "Generated output.asm" << endl;
+
     cout << "No Errors" << endl;
 
     return EXIT_SUCCESS;

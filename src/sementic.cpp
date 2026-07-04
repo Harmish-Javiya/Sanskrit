@@ -115,6 +115,8 @@ void SemanticAnalyzer::visitStatement(ASTNode* node) {
     else if (auto* n = dynamic_cast<FuncDeclNode*>(node)) visitFuncDecl(n);
     else if (auto* n = dynamic_cast<FuncCallNode*>(node)) visitFuncCall(n);
     else if (auto* n = dynamic_cast<SwitchNode*>(node))    visitSwitch(n);
+    else if (auto* n = dynamic_cast<NewNode*>(node)) visitNewExpr(n);
+    else if (auto* n = dynamic_cast<FreeNode*>(node)) visitFreeStmt(n);
 }
 
 void SemanticAnalyzer::visitBlock(BlockNode* node){
@@ -143,7 +145,7 @@ SansType SemanticAnalyzer::visitExpr(ASTNode* node) {
     }
     if (auto* n = dynamic_cast<ArrayLiteralNode*>(node)) return visitArrayLiteral(n);
     if (auto* n = dynamic_cast<ArrayAccessNode*>(node)) return visitArrayAccess(n);
-
+    if (auto* n = dynamic_cast<NewNode*>(node)) return visitNewExpr(n);
     return SansType::UNKNOWN;
 }
 
@@ -511,6 +513,28 @@ SansType SemanticAnalyzer::visitArrayAccess(ArrayAccessNode* node) {
     return SansType::INT; // element type — improve later with sarani_purnank
 }
 
+
+SansType SemanticAnalyzer::visitNewExpr(NewNode* node){
+    SansType type = typeFromString(node->type);
+
+    if(type == SansType::UNKNOWN){
+        reportError("Undeclared variable in nava: " + node->type);
+    }
+    return type;
+}
+
+void SemanticAnalyzer::visitFreeStmt(FreeNode* node){
+    SymbolInfo* info = SymbolTable.lookup(node->name);
+
+    if (!info){
+        reportError("Undeclared variable in mukta: " + node->name);
+        return;
+    }
+
+    if(info->isConst){
+        reportError("Cannot free const variable: " + node->name);
+    }
+}
 
 bool SemanticAnalyzer::hasErrors() { return !errors.empty(); }
 

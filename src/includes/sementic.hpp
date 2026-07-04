@@ -69,6 +69,7 @@ class SemanticAnalyzer{
         void visitExit(ExitNode* node);
         void visitFuncDecl(FuncDeclNode* node);
         void visitFuncCall(FuncCallNode* node);
+        void visitFreeStmt(FreeNode* node);
 
         SansType visitExpr(ASTNode* node);
         SansType visitBinaryOp(BinaryOpNode* node);
@@ -77,7 +78,8 @@ class SemanticAnalyzer{
         SansType visitIdentifier(IdentifierNode* node);
         SansType visitArrayLiteral(ArrayLiteralNode* node);
         SansType visitArrayAccess(ArrayAccessNode* node);
-
+        SansType visitNewExpr(NewNode* node);
+        
         void visitStatement(ASTNode* node);
 
     public:
