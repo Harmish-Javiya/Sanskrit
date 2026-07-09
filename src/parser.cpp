@@ -123,6 +123,14 @@ ASTNode* Parser::parseStatement() {
            peekNext().type == TokenType::bhaga_sthapana ||
            peekNext().type == TokenType::shesh_sthapana)
            return parseAssignment();
+        
+        if (peekNext().type == TokenType::vriddhi ||
+            peekNext().type == TokenType::kshaya) {
+                cerr << "[DEBUG] parsing x++ or x--" << endl; 
+                ASTNode* expr = parseExpr();
+                expect(TokenType::ardhviram);
+                return expr;
+        }
            
         if (peekNext().type == TokenType::vam_varga){
             ASTNode* arrNode =  parseArrayAccess();

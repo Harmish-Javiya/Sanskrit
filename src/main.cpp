@@ -186,13 +186,6 @@ int main(int argc, char* argv[]) {
     
     CodeGenerator codegen;
     
-    // CodeGenerator gen;
-    // LiteralNode lit;
-    // lit.type = TokenType::purnank_lit;
-    // lit.value = "42";
-    // gen.genLiteral(&lit);
-    // cout << gen.getOutput() << endl;
-
     codegen.generate(ast);
     codegen.writeToFile("output.asm");
     cout << "Generated output.asm" << endl;
