@@ -13,6 +13,9 @@ private:
     stringstream output;
     stringstream dataSection;
     unordered_map<string, int> variables;
+    unordered_map<string, string> variableTypes;
+    unordered_map<string, bool> isFloatVar;
+    int calculateStackSize(BlockNode* body, vector<ParamNode*>& params);
     int stackOffset = 0;
     int labelCount = 0;
     string currentFunction;
@@ -45,6 +48,7 @@ private:
     void genFuncCall(FuncCallNode* node);
     void genArrayLiteral(ArrayLiteralNode* node);
     void genArrayAccess(ArrayAccessNode* node);
+    void genSwitch(SwitchNode* node);
 
     //Expressions
     void genExpr(ASTNode* node);
@@ -52,7 +56,14 @@ private:
     void genUnaryOp(UnaryOpNode* node);
     void genLiteral(LiteralNode* node);
     void genIdentifier(IdentifierNode* node);
+    void genNewExpr(NewNode* node);
+    void genFreeStmt(FreeNode* node);
 
+    //Libraries
+    void emitMathLibrary();
+    
+    // helper
+    bool isFloatNode(ASTNode* node);
 public:
     void generate(ProgramNode* node);
     string getOutput();

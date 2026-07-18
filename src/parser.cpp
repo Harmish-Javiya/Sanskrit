@@ -190,6 +190,13 @@ BlockNode* Parser::parseBlock() {
 ASTNode* Parser::parsePrimaryExpr(){
     Token t = peek();
 
+    if (t.type == TokenType::mudraya  ||
+        t.type == TokenType::ardhviram ||
+        t.type == TokenType::anta) {
+        error("Expected expression got: " + tokenTypeToString(t.type));
+        throw runtime_error("parse error");
+    }
+
     if (check(TokenType::vam_varga))
         return parseArrayLiteral();
 
@@ -277,6 +284,7 @@ ASTNode* Parser::parseVarDecl(){
 
 ASTNode* Parser::parsePrintStmt() { 
     ASTNode* value = parseExpr();
+
     expect(TokenType::mudraya);
     expect(TokenType::ardhviram);
     

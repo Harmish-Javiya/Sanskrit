@@ -1,18 +1,9 @@
+karma jodan(a purnank, b purnank) purnank {
+    nivarta a + b;
+}
+
 mukhya() {
-    x purnank = 5;
-    x++;
-    x mudraya;       // should print 6
-
-    x--;
-    x mudraya;       // should print 5
-
-    y purnank = 10;
-    y *= 2;
-    y mudraya;       // should print 20
-
-    flag tark = satya;
-    flag = !flag;
-    flag mudraya;    // should print 0 (asatya)
-
+    result purnank = jodan(jodan(1, 2), 3);
+    result mudraya;
     nivarta;
 }
